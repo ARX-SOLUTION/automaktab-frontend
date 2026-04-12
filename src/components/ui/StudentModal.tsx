@@ -33,6 +33,7 @@ export interface CreateStudentPayload {
   result?: ResultStatus;
   notes?: string;
   status?: string;
+  registered_by?: string;
 }
 
 const paymentMethodLabels: Record<PaymentMethod, string> = {
@@ -117,6 +118,8 @@ const StudentModal = ({ open, onClose, onSubmit, loading, student, courseType }:
       return;
     }
 
+    const operatorName = user?.name || user?.email || "Noma'lum";
+
     const payload: CreateStudentPayload = {
       first_name: form.first_name, last_name: form.last_name,
       phone: form.phone, course_type: courseType,
@@ -124,6 +127,7 @@ const StudentModal = ({ open, onClose, onSubmit, loading, student, courseType }:
       branch_id: form.branch_id || undefined,
       result: form.result, has_document: form.has_document,
       notes: form.notes || undefined, status: form.status || "active",
+      registered_by: student ? undefined : operatorName,
     };
 
     if (courseType === "tezkor") {
