@@ -1,4 +1,4 @@
-import { CourseType } from './student';
+import { CourseType, Student } from './student';
 
 export interface Group {
   id: string;
@@ -15,4 +15,9 @@ export interface GroupOverview {
   branch_name: string;
   branch_id: string;
   groups: Group[];
+}
+
+
+export interface GroupsById extends Group {
+  students: Student[]
 }

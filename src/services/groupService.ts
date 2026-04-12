@@ -1,14 +1,13 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import axiosInstance from '@/api/axiosInstance';
-import { Group, GroupOverview } from '@/types/group';
-
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import axiosInstance from "@/api/axiosInstance";
+import { Group, GroupOverview, GroupsById } from "@/types/group";
 
 export const useGroups = () =>
   useQuery<Group[]>({
-    queryKey: ['groups'],
+    queryKey: ["groups"],
     queryFn: async () => {
       try {
-        const { data: res } = await axiosInstance.get('/groups');
+        const { data: res } = await axiosInstance.get("/groups");
         const arr = res?.data;
         if (Array.isArray(arr)) return arr;
         if (Array.isArray(res)) return res;
@@ -21,10 +20,10 @@ export const useGroups = () =>
 
 export const useGroupsOverview = () =>
   useQuery<GroupOverview[]>({
-    queryKey: ['groups-overview'],
+    queryKey: ["groups-overview"],
     queryFn: async () => {
       try {
-        const { data: res } = await axiosInstance.get('/groups/overview');
+        const { data: res } = await axiosInstance.get("/groups/overview");
         const arr = res?.data;
         if (Array.isArray(arr)) return arr;
         if (Array.isArray(res)) return res;
@@ -35,16 +34,30 @@ export const useGroupsOverview = () =>
     },
   });
 
+export const useGroupsById = ({ id }: { id: string }) =>
+  useQuery<GroupsById>({
+    queryKey: ["groups", id],
+    queryFn: async () =>
+      axiosInstance
+        .get(`/groups/${id}`)
+        .then(({ data }) => data?.data || data)
+        .catch(() => null),
+  });
+
 export const useCreateGroup = () => {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (group: { name: string; branchId: string; courseType: string }) => {
-      const { data } = await axiosInstance.post('/groups', group);
+    mutationFn: async (group: {
+      name: string;
+      branchId: string;
+      courseType: string;
+    }) => {
+      const { data } = await axiosInstance.post("/groups", group);
       return data?.data || data;
     },
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['groups'] });
-      qc.invalidateQueries({ queryKey: ['groups-overview'] });
+      qc.invalidateQueries({ queryKey: ["groups"] });
+      qc.invalidateQueries({ queryKey: ["groups-overview"] });
     },
   });
 };
@@ -52,13 +65,21 @@ export const useCreateGroup = () => {
 export const useUpdateGroup = () => {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async ({ id, ...group }: { id: string; name: string; branchId: string; courseType: string }) => {
+    mutationFn: async ({
+      id,
+      ...group
+    }: {
+      id: string;
+      name: string;
+      branchId: string;
+      courseType: string;
+    }) => {
       const { data } = await axiosInstance.put(`/groups/${id}`, group);
       return data?.data || data;
     },
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['groups'] });
-      qc.invalidateQueries({ queryKey: ['groups-overview'] });
+      qc.invalidateQueries({ queryKey: ["groups"] });
+      qc.invalidateQueries({ queryKey: ["groups-overview"] });
     },
   });
 };
@@ -70,8 +91,8 @@ export const useDeleteGroup = () => {
       await axiosInstance.delete(`/groups/${id}`);
     },
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['groups'] });
-      qc.invalidateQueries({ queryKey: ['groups-overview'] });
+      qc.invalidateQueries({ queryKey: ["groups"] });
+      qc.invalidateQueries({ queryKey: ["groups-overview"] });
     },
   });
 };

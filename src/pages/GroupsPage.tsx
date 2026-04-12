@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { format } from "date-fns";
-import { useGroups, useGroupsOverview, useCreateGroup, useUpdateGroup, useDeleteGroup } from "@/services/groupService";
+import { useGroups, useGroupsOverview, useCreateGroup, useUpdateGroup, useDeleteGroup, useGroupsById } from "@/services/groupService";
 import { useBranches } from "@/services/branchService";
 import { useStudents } from "@/services/studentService";
 import { Group } from "@/types/group";
@@ -46,17 +46,9 @@ const GroupsPage = () => {
 
   const branchList = branches || [];
 
-  // Fetch students for the detail view group
-  const { data: groupStudents, isLoading: studentsLoading } = useStudents(
-    detailGroup?.course_type,
-    detailGroup?.branch_id
-  );
 
   // Filter students belonging to the selected group
-  const filteredGroupStudents = (groupStudents || []).filter(
-    (s) => s.group_id === detailGroup?.id
-  );
-
+  const { data: groupData, isLoading: groupsByIdLoading } = useGroupsById({ id: detailGroup?.id ||   "" });
   const filtered = (groups || []).filter((g) =>
     g.name.toLowerCase().includes(search.toLowerCase())
   );
@@ -251,46 +243,46 @@ const GroupsPage = () => {
                 </tr>
               </thead>
               <tbody>
-                {studentsLoading ? (
+                {groupsByIdLoading ? (
                   [...Array(3)].map((_, i) => (
                     <tr key={i} className="border-b border-border/50">
                       <td colSpan={8} className="p-4"><Skeleton className="h-5 w-full" /></td>
                     </tr>
                   ))
-                ) : filteredGroupStudents.length === 0 ? (
+                ) : groupData?.active_students === 0 ? (
                   <tr>
                     <td colSpan={8} className="py-12 text-center text-muted-foreground">
                       Bu guruhda talabalar topilmadi
                     </td>
                   </tr>
                 ) : (
-                  filteredGroupStudents.map((s) => (
+                  groupData?.students?.map((s) => (
                     <tr key={s.id} className="table-row-striped border-b border-border/50">
-                      <td className="px-4 py-3 font-medium">{s.last_name}</td>
-                      <td className="px-4 py-3">{s.first_name}</td>
-                      <td className="px-4 py-3 text-muted-foreground">{s.phone}</td>
-                      <td className="px-4 py-3 text-right">{formatMoney(s.total_price)}</td>
+                      <td className="px-4 py-3 font-medium">{s?.last_name}</td>
+                      <td className="px-4 py-3">{s?.first_name}</td>
+                      <td className="px-4 py-3 text-muted-foreground">{s?.phone}</td>
+                      <td className="px-4 py-3 text-right">{formatMoney(s?.total_price)}</td>
                       <td className="px-4 py-3 text-right">
-                        <span className={s.debt > 0 ? "text-destructive" : "text-success"}>
-                          {s.debt > 0 ? formatMoney(s.debt) : "—"}
+                        <span className={s?.debt > 0 ? "text-destructive" : "text-success"}>
+                          {s?.debt > 0 ? formatMoney(s?.debt) : "—"}
                         </span>
                       </td>
                       <td className="px-4 py-3 text-center">
-                        <span className={s.has_document ? "text-success" : "text-destructive"}>
-                          {s.has_document ? "+" : "-"}
+                        <span className={s?.has_document ? "text-success" : "text-destructive"}>
+                          {s?.has_document ? "+" : "-"}
                         </span>
                       </td>
                       <td className="px-4 py-3 text-center">
-                        {s.result === "topshirdi" ? <span className="text-success">✓</span> : s.result === "yiqildi" ? <span className="text-destructive">✗</span> : <span className="text-muted-foreground">—</span>}
+                        {s?.result === "topshirdi" ? <span className="text-success">✓</span> : s?.result === "yiqildi" ? <span className="text-destructive">✗</span> : <span className="text-muted-foreground">—</span>}
                       </td>
-                      <td className="px-4 py-3 text-muted-foreground">{formatDate(s.created_at)}</td>
+                      <td className="px-4 py-3 text-muted-foreground">{formatDate(s?.created_at)}</td>
                     </tr>
                   ))
                 )}
               </tbody>
             </table>
           </div>
-          <p className="text-sm text-muted-foreground">Jami: {filteredGroupStudents.length} ta talaba</p>
+          <p className="text-sm text-muted-foreground">Jami: {groupData?.active_students} ta talaba</p>
         </DialogContent>
       </Dialog>
 
