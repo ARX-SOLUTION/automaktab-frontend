@@ -33,6 +33,7 @@ export interface CreateStudentPayload {
   result?: ResultStatus;
   notes?: string;
   status?: string;
+  registered_by?: string;
 }
 
 const paymentMethodLabels: Record<PaymentMethod, string> = {
@@ -117,7 +118,7 @@ const StudentModal = ({ open, onClose, onSubmit, loading, student, courseType }:
       return;
     }
 
-    const operatorName = user?.full_name || user?.email || "Noma'lum";
+    const operatorName = user?.name || user?.email || "Noma'lum";
 
     const payload: CreateStudentPayload = {
       first_name: form.first_name, last_name: form.last_name,
