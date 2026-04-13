@@ -43,11 +43,6 @@ export const formatDate = (d: string) => {
   }
 };
 
-const resultIcon = (r: string) => {
-  if (r === "topshirdi") return <span className="text-success">✓</span>;
-  if (r === "yiqildi") return <span className="text-destructive">✗</span>;
-  return <span className="text-muted-foreground">—</span>;
-};
 
 const StudentsPage = () => {
   const { isOwner, user } = useAuthStore();
@@ -289,7 +284,7 @@ const StudentsPage = () => {
                             </span>
                           </td>
                           <td className="px-4 py-3 text-muted-foreground">{s.registered_by}</td>
-                          <td className="px-4 py-3 text-center">{resultIcon(s.result)}</td>
+                          <td className="px-4 py-3 text-center">{s.result}</td>
                           <td className="px-4 py-3 text-muted-foreground max-w-[120px] truncate">{s.notes}</td>
                         </>
                       ) : (
@@ -319,7 +314,7 @@ const StudentsPage = () => {
                             </span>
                           </td>
                           <td className="px-4 py-3 text-muted-foreground">{s.registered_by}</td>
-                          <td className="px-4 py-3 text-center">{resultIcon(s.result)}</td>
+                          <td className="px-4 py-3 text-center">{s.result}</td>
                           <td className="px-4 py-3 text-muted-foreground max-w-[120px] truncate">{s.notes}</td>
                         </>
                       )}

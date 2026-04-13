@@ -32,8 +32,8 @@ const LoginPage = () => {
     <div className="flex min-h-screen items-center justify-center bg-background p-4">
       <div className="glass-card w-full max-w-sm p-8 animate-slide-in">
         <div className="mb-8 text-center">
-          <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-primary">
-            <Car className="h-7 w-7 text-primary-foreground" />
+          <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center ">
+            <img src="/favicon.png" alt="Logo" className="h-full w-full" />
           </div>
           <h1 className="font-heading text-2xl font-bold text-foreground">
             Auto Maktab CRM
