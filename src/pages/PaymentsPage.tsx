@@ -19,6 +19,7 @@ import PaymentModal, { CreatePaymentPayload } from "@/components/ui/PaymentModal
 import { DollarSign, AlertTriangle, TrendingUp, Plus, Search, Users, UserX, CalendarIcon } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { formatDate } from "./StudentsPage";
 
 const formatMoney = (n: number) =>
   new Intl.NumberFormat("uz-UZ").format(n) + " so'm";
@@ -203,7 +204,7 @@ const PaymentsPage = () => {
                         </span>
                       </td>
                       <td className="px-4 py-3 text-center text-xs">{p.payment_method === "naqd" ? "Naqd" : "Karta"}</td>
-                      <td className="px-4 py-3 text-muted-foreground">{p.date}</td>
+                      <td className="px-4 py-3 text-muted-foreground">{formatDate(p.date)}</td>
                     </tr>
                   ))}
             </tbody>

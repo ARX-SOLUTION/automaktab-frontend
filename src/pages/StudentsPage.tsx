@@ -34,7 +34,7 @@ import { cn } from "@/lib/utils";
 
 const formatMoney = (n: number) => new Intl.NumberFormat("uz-UZ").format(n);
 
-const formatDate = (d: string) => {
+export const formatDate = (d: string) => {
   try {
     const date = new Date(d);
     return format(date, "dd.MM.yyyy");

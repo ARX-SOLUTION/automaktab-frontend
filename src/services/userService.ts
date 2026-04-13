@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import axiosInstance from '@/api/axiosInstance';
 import { User } from '@/types/user';
 
@@ -22,3 +22,15 @@ export const useUsers = () =>
       }
     },
   });
+
+export const useUpdateUser = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, ...user }: Partial<User> & { id: string }) => {
+      const { data } = await axiosInstance.put(`/users/${id}`, user);
+      return data?.data || data;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['users'] }),
+  });
+};
+
