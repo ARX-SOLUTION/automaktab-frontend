@@ -82,7 +82,7 @@ const StudentModal = ({
   const { data: groups } = useGroups();
 
   const branchList = branches || [];
-  const groupList = (groups || []).filter((g) => g.course_type === courseType);
+  const groupList = (groups || []).filter((g) => g.course_type === courseType || !g.course_type);
 
   const defaultForm = (): CreateStudentPayload => ({
     first_name: "",
