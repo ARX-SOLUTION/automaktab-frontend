@@ -41,7 +41,7 @@ const App = () => (
             <Route path="guruhlar" element={<GroupsPage />} />
             <Route path="talabalar" element={<StudentsPage />} />
             <Route path="tolovlar" element={<PaymentsPage />} />
-            <Route path="hujjatlar" element={<DocumentsPage />} />
+            {/* <Route path="hujjatlar" element={<DocumentsPage />} /> */}
             <Route path="operatorlar" element={<OperatorsPage />} />
             <Route path="oqituvchilar" element={<TeachersPage />} />
             <Route path="foydalanuvchilar" element={<OwnerRoute><UsersPage /></OwnerRoute>} />

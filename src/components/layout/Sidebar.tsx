@@ -34,7 +34,7 @@ const navItems = [
     ownerOnly: false,
   },
   { path: "/tolovlar", label: "To'lovlar", icon: CreditCard, ownerOnly: false },
-  { path: "/hujjatlar", label: "Hujjatlar", icon: FileText, ownerOnly: false },
+  // { path: "/hujjatlar", label: "Hujjatlar", icon: FileText, ownerOnly: false },
   {
     path: "/operatorlar",
     label: "Operatorlar",
