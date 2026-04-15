@@ -379,7 +379,7 @@ const StudentModal = ({
                     <SelectContent>
                       {groupList.map((g) => (
                         <SelectItem key={g.id} value={g.id}>
-                          {g.name} ({g.branch_name || g.branch_id})
+                          {g.name}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -417,7 +417,7 @@ const StudentModal = ({
 
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label>Operator (registeredBy)</Label>
+              <Label>Operator</Label>
               <Select
                 value={form.registered_by || ""}
                 onValueChange={(v) => set("registered_by", v)}
