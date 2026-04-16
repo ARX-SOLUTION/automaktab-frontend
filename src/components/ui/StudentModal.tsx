@@ -281,7 +281,6 @@ const StudentModal = ({
                 disabled={disabledFields.includes("total_price")}
                 className={`${disabledFields.includes("total_price") ? "bg-muted" : "bg-secondary"} border-border`}
               />
-              />
             </div>
             <div className="space-y-2">
               <Label>To'lov turi</Label>
