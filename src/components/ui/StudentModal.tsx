@@ -136,6 +136,7 @@ const StudentModal = ({
           status: student.status || "active",
           registeredBy: student.registered_by || "",
         });
+        console.log("Loaded student into form:", student.group_id);
       } else {
         setForm(defaultForm());
       }
@@ -289,7 +290,9 @@ const StudentModal = ({
                 onValueChange={(v) => set("payment_method", v as PaymentMethod)}
                 disabled={disabledFields.includes("payment_method")}
               >
-                <SelectTrigger className={`${disabledFields.includes("payment_method") ? "bg-muted" : "bg-secondary"} border-border`}>
+                <SelectTrigger
+                  className={`${disabledFields.includes("payment_method") ? "bg-muted" : "bg-secondary"} border-border`}
+                >
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -338,7 +341,7 @@ const StudentModal = ({
                     <SelectContent>
                       {groupList.map((g) => (
                         <SelectItem key={g.id} value={g.id}>
-                          {g.name} 
+                          {g.name}
                         </SelectItem>
                       ))}
                     </SelectContent>
