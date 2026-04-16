@@ -278,7 +278,9 @@ const StudentModal = ({
                 onChange={(e) => setNum("total_price", e.target.value)}
                 required
                 min={0}
-                className="bg-secondary border-border"
+                disabled={disabledFields.includes("total_price")}
+                className={`${disabledFields.includes("total_price") ? "bg-muted" : "bg-secondary"} border-border`}
+              />
               />
             </div>
             <div className="space-y-2">
