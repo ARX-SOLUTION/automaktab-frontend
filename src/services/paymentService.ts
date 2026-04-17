@@ -24,10 +24,12 @@ export const usePaymentSummary = (
   branchId?: string,
   startDate?: Date,
   endDate?: Date,
-  paymentStatus?: boolean | undefined,
+  payment_status?: boolean | undefined,
+  payment_type?: string,
+  course_type?: string,
 ) =>
   useQuery<PaymentSummary>({
-    queryKey: ["payment-summary", branchId, startDate, endDate, paymentStatus],
+    queryKey: ["payment-summary", branchId, startDate, endDate, payment_status, payment_type, course_type],
     queryFn: async () => {
       try {
         const adjustedEndDate = endDate ? new Date(endDate) : undefined;
@@ -39,7 +41,9 @@ export const usePaymentSummary = (
             branch_id: branchId,
             startDate: startDate?.toISOString(),
             endDate: adjustedEndDate?.toISOString(),
-            paymentStatus,
+            payment_status,
+            payment_type,
+            course_type,
           },
         });
         return res?.data || res;

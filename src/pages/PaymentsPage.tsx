@@ -72,6 +72,8 @@ const PaymentsPage = () => {
     dateFrom ? new Date(dateFrom) : undefined,
     dateTo ? new Date(dateTo) : undefined,
     hasDebt !== undefined ? hasDebt : undefined,
+    paymentMethodFilter !== "all" ? paymentMethodFilter : undefined,
+    courseTypeFilter !== "all" ? courseTypeFilter : undefined
   );
   const { data: branches } = useBranches();
 
