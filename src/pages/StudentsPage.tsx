@@ -34,8 +34,11 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { usePagination } from "@/hooks/usePagination";
 import PaginationControls from "@/components/ui/PaginationControls";
+import { formatPhone } from "@/lib/phoneFormater";
 
 const formatMoney = (n: number) => new Intl.NumberFormat("uz-UZ").format(n);
+const capitalize = (str?: string) =>
+  str ? str.charAt(0).toUpperCase() + str.slice(1).toLowerCase() : "";
 
 export const formatDate = (d: string) => {
   try {
@@ -64,7 +67,7 @@ const StudentsPage = () => {
     courseType,
     branchId,
     1,
-    500, 
+    500,
   );
   const { data: branches } = useBranches();
   const { data: operators } = useOperators();
@@ -373,10 +376,12 @@ const StudentsPage = () => {
                       <td className="px-4 py-3 text-center text-muted-foreground">
                         {startIndex + idx + 1}
                       </td>
-                      <td className="px-4 py-3 font-medium">{s.last_name}</td>
-                      <td className="px-4 py-3">{s.first_name}</td>
+                      <td className="px-4 py-3 font-medium">
+                        {capitalize(s.last_name)}
+                      </td>
+                      <td className="px-4 py-3">{capitalize(s.first_name)}</td>
                       <td className="px-4 py-3 text-muted-foreground">
-                        {s.phone}
+                        {formatPhone(s.phone)}
                       </td>
                       <td className="px-4 py-3 text-right">
                         {formatMoney(s.total_price)}
