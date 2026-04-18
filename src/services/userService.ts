@@ -28,7 +28,7 @@ export const useUsers = () =>
     queryKey: ["users"],
     queryFn: async () => {
       try {
-        const { data: res } = await axiosInstance.get("/users");
+        const { data: res } = await axiosInstance.get("/users", { params: { role: 'manager' } });
         const arr = res?.data;
         console.log("Users response:", res);
         if (Array.isArray(arr)) return arr;
