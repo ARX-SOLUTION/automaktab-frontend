@@ -40,10 +40,9 @@ export const usePaymentSummary = (
     ],
     queryFn: async () => {
       try {
-
         const { data: res } = await axiosInstance.get("/payments/summary", {
           params: {
-            branch_id: branchId,
+            branchId: branchId,
             startDate: startDate,
             endDate: endDate,
             payment_status,
