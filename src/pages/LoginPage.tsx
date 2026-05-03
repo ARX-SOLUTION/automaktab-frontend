@@ -8,22 +8,6 @@ import { Car } from "lucide-react";
 import { toast } from "sonner";
 
 const LoginPage = () => {
-  if (true) {
-    return (
-      <div
-        style={{
-          height: "100vh",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          fontSize: "24px",
-          color: "red",
-        }}
-      >
-        Error
-      </div>
-    );
-  }
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const navigate = useNavigate();
