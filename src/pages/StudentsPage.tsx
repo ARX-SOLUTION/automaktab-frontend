@@ -29,7 +29,7 @@ import {
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import StudentModal from "@/components/ui/StudentModal";
-import { Plus, Search, Pencil, Trash2, CalendarIcon } from "lucide-react";
+import { Plus, Search, Pencil, Trash2, CalendarIcon, ChevronUp, ChevronDown, ChevronsUpDown } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { usePagination } from "@/hooks/usePagination";
@@ -62,6 +62,8 @@ const StudentsPage = () => {
   const [editStudent, setEditStudent] = useState<Student | null>(null);
   const [dateFrom, setDateFrom] = useState<Date | undefined>();
   const [dateTo, setDateTo] = useState<Date | undefined>();
+  const [sortField, setSortField] = useState("created_at");
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
 
   const { data: students, isLoading } = useStudents(
     courseType,
@@ -94,8 +96,25 @@ const StudentsPage = () => {
     return matchSearch && matchDate;
   });
 
+  const toggleSort = (field: string) => {
+    if (sortField === field) setSortDir((d) => (d === "asc" ? "desc" : "asc"));
+    else { setSortField(field); setSortDir("asc"); }
+  };
+
+  const sorted = [...filtered].sort((a, b) => {
+    const va = a[sortField as keyof typeof a];
+    const vb = b[sortField as keyof typeof b];
+    if (va == null && vb == null) return 0;
+    if (va == null) return 1;
+    if (vb == null) return -1;
+    if (typeof va === "string" && typeof vb === "string") {
+      return sortDir === "asc" ? va.localeCompare(vb) : vb.localeCompare(va);
+    }
+    return sortDir === "asc" ? (va < vb ? -1 : va > vb ? 1 : 0) : (va > vb ? -1 : va < vb ? 1 : 0);
+  });
+
   const { currentPage, totalPages, paginatedItems, setCurrentPage } =
-    usePagination(filtered);
+    usePagination(sorted);
 
   const handleDelete = () => {
     if (!deleteId) return;
@@ -270,16 +289,25 @@ const StudentsPage = () => {
                   #
                 </th>
                 <th className="px-4 py-3 text-left font-medium text-muted-foreground">
-                  Familya
+                  <button onClick={() => toggleSort("last_name")} className="flex items-center gap-1 hover:text-foreground transition-colors">
+                    Familya
+                    {sortField === "last_name" ? (sortDir === "asc" ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />) : <ChevronsUpDown className="h-3 w-3 text-muted-foreground/50" />}
+                  </button>
                 </th>
                 <th className="px-4 py-3 text-left font-medium text-muted-foreground">
-                  Ismi
+                  <button onClick={() => toggleSort("first_name")} className="flex items-center gap-1 hover:text-foreground transition-colors">
+                    Ismi
+                    {sortField === "first_name" ? (sortDir === "asc" ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />) : <ChevronsUpDown className="h-3 w-3 text-muted-foreground/50" />}
+                  </button>
                 </th>
                 <th className="px-4 py-3 text-left font-medium text-muted-foreground">
                   Telefon
                 </th>
                 <th className="px-4 py-3 text-right font-medium text-muted-foreground">
-                  Kurs narxi
+                  <button onClick={() => toggleSort("total_price")} className="flex items-center gap-1 hover:text-foreground transition-colors ml-auto">
+                    Kurs narxi
+                    {sortField === "total_price" ? (sortDir === "asc" ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />) : <ChevronsUpDown className="h-3 w-3 text-muted-foreground/50" />}
+                  </button>
                 </th>
                 {courseType === "tezkor" ? (
                   <>
@@ -287,7 +315,10 @@ const StudentsPage = () => {
                       To'lov
                     </th>
                     <th className="px-4 py-3 text-right font-medium text-muted-foreground">
-                      Qarzdorlik
+                      <button onClick={() => toggleSort("debt")} className="flex items-center gap-1 hover:text-foreground transition-colors ml-auto">
+                        Qarzdorlik
+                        {sortField === "debt" ? (sortDir === "asc" ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />) : <ChevronsUpDown className="h-3 w-3 text-muted-foreground/50" />}
+                      </button>
                     </th>
                     <th className="px-4 py-3 text-center font-medium text-muted-foreground">
                       Tulov turi
@@ -320,7 +351,10 @@ const StudentsPage = () => {
                       3-tulov
                     </th>
                     <th className="px-4 py-3 text-right font-medium text-muted-foreground">
-                      Qarzdorlik
+                      <button onClick={() => toggleSort("debt")} className="flex items-center gap-1 hover:text-foreground transition-colors ml-auto">
+                        Qarzdorlik
+                        {sortField === "debt" ? (sortDir === "asc" ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />) : <ChevronsUpDown className="h-3 w-3 text-muted-foreground/50" />}
+                      </button>
                     </th>
                     <th className="px-4 py-3 text-center font-medium text-muted-foreground">
                       Tulov turi
@@ -352,7 +386,10 @@ const StudentsPage = () => {
                   </>
                 )}
                 <th className="px-4 py-3 text-left font-medium text-muted-foreground">
-                  Sana
+                  <button onClick={() => toggleSort("created_at")} className="flex items-center gap-1 hover:text-foreground transition-colors">
+                    Sana
+                    {sortField === "created_at" ? (sortDir === "asc" ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />) : <ChevronsUpDown className="h-3 w-3 text-muted-foreground/50" />}
+                  </button>
                 </th>
                 <th className="px-4 py-3 text-center font-medium text-muted-foreground">
                   Amallar

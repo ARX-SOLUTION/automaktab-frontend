@@ -107,7 +107,6 @@ const StudentModal = ({
     initial_payment: 0,
     group_id: "",
     status: "active",
-    registeredBy: "",
   });
 
   const [form, setForm] = useState<CreateStudentPayload>(defaultForm());
@@ -134,7 +133,6 @@ const StudentModal = ({
           contract_number: student.contract_number || null,
           notes: student.notes === undefined ? "" : student.notes,
           status: student.status || "active",
-          registeredBy: student.registered_by || "",
         });
         console.log("Loaded student into form:", student.group_id);
       } else {
@@ -178,7 +176,6 @@ const StudentModal = ({
       has_document: form.has_document,
       notes: form.notes || undefined,
       status: form.status || "active",
-      registeredBy: form.registeredBy || undefined,
     };
 
     if (courseType === "tezkor") {
@@ -424,24 +421,6 @@ const StudentModal = ({
           )}
 
           <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label>Operator</Label>
-              <Select
-                value={form.registeredBy || ""}
-                onValueChange={(v) => set("registeredBy", v)}
-              >
-                <SelectTrigger className="bg-secondary border-border">
-                  <SelectValue placeholder="Operator tanlang" />
-                </SelectTrigger>
-                <SelectContent>
-                  {operators.map((op) => (
-                    <SelectItem key={op.id} value={op.id}>
-                      {op.name || op.email}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
             <div className="space-y-2">
               <Label>Natijasi</Label>
               <Select

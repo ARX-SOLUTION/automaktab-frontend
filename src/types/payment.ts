@@ -11,12 +11,20 @@ export interface Payment {
   amount_paid: number;
   remaining_debt: number;
   payment_method: PaymentMethod;
+  recorded_by: string | null;
   date: string;
   created_at: string;
 }
 
+export interface PaymentSnapshot {
+  today_income: number;
+  this_month_income: number;
+  current_total_debt: number;
+  students_with_debt: number;
+}
+
 export interface PaymentSummary {
-  total_collected: number;
-  total_debt: number;
-  monthly_income: number;
+  period_collected: number;
+  period_payments_count: number;
+  period_debt: number;
 }

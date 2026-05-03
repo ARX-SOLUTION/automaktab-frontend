@@ -1,9 +1,10 @@
-import { useState } from "react";
+import * as XLSX from "xlsx";
+import { useState, useMemo } from "react";
 import { format } from "date-fns";
 import { useAuthStore } from "@/store/authStore";
 import {
   usePayments,
-  usePaymentSummary,
+  usePaymentSnapshot,
   useCreatePayment,
 } from "@/services/paymentService";
 import { useStudents } from "@/services/studentService";
@@ -29,34 +30,65 @@ import PaymentModal, {
   CreatePaymentPayload,
 } from "@/components/ui/PaymentModal";
 import {
-  DollarSign,
+  Wallet,
   AlertTriangle,
   TrendingUp,
   Plus,
   Search,
   Users,
-  UserX,
   CalendarIcon,
+  Sun,
+  Receipt,
+  X,
+  ChevronUp,
+  ChevronDown,
+  ChevronsUpDown,
+  Download,
+  Loader2,
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { usePagination } from "@/hooks/usePagination";
 import PaginationControls from "@/components/ui/PaginationControls";
 
-
-export const formatDate = (d: string) => {
+const formatDate = (d: string) => {
   try {
     if (!d) return "—";
-    const date = new Date(d);
-    
-    return format(date, "dd.MM.yyyy HH:mm:ss");
+    return format(new Date(d), "dd.MM.yyyy HH:mm");
   } catch {
     return d;
   }
 };
 
 const formatMoney = (n: number) =>
-  new Intl.NumberFormat("uz-UZ").format(n) + " so'm";
+  new Intl.NumberFormat("uz-UZ").format(n || 0) + " so'm";
+
+// Date preset helpers
+const today = () => {
+  const d = new Date();
+  d.setHours(0, 0, 0, 0);
+  return d;
+};
+const weekAgo = () => {
+  const d = today();
+  d.setDate(d.getDate() - 6);
+  return d;
+};
+const monthStart = () => {
+  const d = today();
+  d.setDate(1);
+  return d;
+};
+const lastMonthStart = () => {
+  const d = today();
+  d.setMonth(d.getMonth() - 1, 1);
+  return d;
+};
+const lastMonthEnd = () => {
+  const d = today();
+  d.setDate(0);
+  return d;
+};
 
 const PaymentsPage = () => {
   const { isOwner, user } = useAuthStore();
@@ -70,297 +102,475 @@ const PaymentsPage = () => {
   const [courseTypeFilter, setCourseTypeFilter] = useState<string>("all");
   const [dateFrom, setDateFrom] = useState<Date | undefined>();
   const [dateTo, setDateTo] = useState<Date | undefined>();
+  const [sortField, setSortField] = useState("date");
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
 
-  const { data: payments, isLoading } = usePayments(branchId);
   const hasDebt =
     paymentStatus === "unpaid"
       ? true
       : paymentStatus === "paid"
         ? false
         : undefined;
-  const { data: summary } = usePaymentSummary(
-    branchId,
-    dateFrom ? new Date(dateFrom) : undefined,
-    dateTo ? new Date(dateTo) : undefined,
-    hasDebt !== undefined ? hasDebt : undefined,
-    paymentMethodFilter !== "all" ? paymentMethodFilter : undefined,
-    courseTypeFilter !== "all" ? courseTypeFilter : undefined
-  );
-  const { data: branches } = useBranches();
 
+  const { data: payments, isLoading, isFetching } = usePayments(
+    branchId,
+    courseTypeFilter !== "all" ? courseTypeFilter : undefined,
+    dateFrom,
+    dateTo,
+  );
+  const hasDateFilter = !!dateFrom || !!dateTo;
+  const { data: snapshot } = usePaymentSnapshot(branchId);
+  const { data: branches } = useBranches();
   const { data: tezkorStudents } = useStudents("tezkor", branchId, 1, 500);
   const { data: avtoStudents } = useStudents("avto_maktab", branchId, 1, 500);
-
   const allStudents = [...(tezkorStudents ?? []), ...(avtoStudents ?? [])];
-
   const createPayment = useCreatePayment();
 
-  const filtered = (payments || []).filter((p) => {
-    const matchSearch = p.student_name
-      .toLowerCase()
-      .includes(search.toLowerCase());
+  // Client-side filter for search/status/method (date is server-side)
+  const filtered = useMemo(
+    () =>
+      (payments || []).filter((p) => {
+        const matchSearch = (p.student_name || "")
+          .toLowerCase()
+          .includes(search.toLowerCase());
+        let matchStatus = true;
+        if (paymentStatus === "paid") matchStatus = p.remaining_debt <= 0;
+        else if (paymentStatus === "unpaid") matchStatus = p.remaining_debt > 0;
+        let matchPaymentMethod = true;
+        if (paymentMethodFilter !== "all")
+          matchPaymentMethod = p.payment_method === paymentMethodFilter;
+        return matchSearch && matchStatus && matchPaymentMethod;
+      }),
+    [payments, search, paymentStatus, paymentMethodFilter],
+  );
 
-    let matchStatus = true;
-    if (paymentStatus === "paid") matchStatus = p.remaining_debt <= 0;
-    else if (paymentStatus === "unpaid") matchStatus = p.remaining_debt > 0;
+  const displayedSummary = useMemo(() => ({
+    period_collected: filtered.reduce((sum, p) => sum + (p.amount_paid || 0), 0),
+    period_payments_count: filtered.length,
+    period_debt: filtered.reduce((sum, p) => sum + (p.remaining_debt || 0), 0),
+  }), [filtered]);
 
-    let matchPaymentMethod = true;
-    if (paymentMethodFilter !== "all") matchPaymentMethod = p.payment_method === paymentMethodFilter;
+  const toggleSort = (field: string) => {
+    if (sortField === field) setSortDir((d) => (d === "asc" ? "desc" : "asc"));
+    else { setSortField(field); setSortDir("asc"); }
+  };
 
-    let matchCourseType = true;
-    if (courseTypeFilter !== "all") matchCourseType = p.course_type === courseTypeFilter;
-
-    let matchDate = true;
-    if (dateFrom || dateTo) {
-      const pDate = new Date(p.date);
-      if (dateFrom && pDate < dateFrom) matchDate = false;
-      if (dateTo) {
-        const toEnd = new Date(dateTo);
-        toEnd.setHours(23, 59, 59, 999);
-        if (pDate > toEnd) matchDate = false;
-      }
+  const sorted = [...filtered].sort((a, b) => {
+    const va = a[sortField as keyof typeof a];
+    const vb = b[sortField as keyof typeof b];
+    if (va == null && vb == null) return 0;
+    if (va == null) return 1;
+    if (vb == null) return -1;
+    if (typeof va === "string" && typeof vb === "string") {
+      return sortDir === "asc" ? va.localeCompare(vb) : vb.localeCompare(va);
     }
-
-    return matchSearch && matchStatus && matchPaymentMethod && matchCourseType && matchDate;
+    return sortDir === "asc" ? (va < vb ? -1 : va > vb ? 1 : 0) : (va > vb ? -1 : va < vb ? 1 : 0);
   });
 
   const { currentPage, totalPages, paginatedItems, setCurrentPage } =
-    usePagination(filtered);
-
-  const paidCount = (payments || []).filter(
-    (p) => p.remaining_debt <= 0,
-  ).length;
-  const unpaidCount = (payments || []).filter(
-    (p) => p.remaining_debt > 0,
-  ).length;
+    usePagination(sorted);
 
   const handlePaymentSubmit = (data: CreatePaymentPayload) => {
     createPayment.mutate(data, {
       onSuccess: () => {
-        toast.success("To'lov qo'shildi");
+        toast.success("To'lov muvaffaqiyatli qo'shildi");
         setModalOpen(false);
       },
       onError: () => toast.error("Xatolik yuz berdi"),
     });
   };
 
+  const exportToExcel = () => {
+    const rows = sorted.map((p, idx) => ({
+      "#": idx + 1,
+      Talaba: p.student_name,
+      Filial: p.branch_name,
+      Kurs: p.course_type === "tezkor" ? "Tezkor" : "Avto maktab",
+      "Umumiy narx": p.total_price,
+      "Bu to'lov": p.amount_paid,
+      "Joriy qoldiq": p.remaining_debt,
+      Turi:
+        p.payment_method === "naqd"
+          ? "Naqd"
+          : p.payment_method === "karta"
+            ? "Karta"
+            : "Perechisleniya",
+      Operator: p.recorded_by || "—",
+      Sana: formatDate(p.date),
+    }));
+    const ws = XLSX.utils.json_to_sheet(rows);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "To'lovlar");
+    XLSX.writeFile(wb, `tolovlar_${format(new Date(), "dd-MM-yyyy")}.xlsx`);
+  };
+
   const startIndex = (currentPage - 1) * 10;
+  const hasAnyFilter =
+    hasDateFilter ||
+    paymentStatus !== "all" ||
+    paymentMethodFilter !== "all" ||
+    courseTypeFilter !== "all" ||
+    !!search;
+
+  const setPreset = (
+    preset: "today" | "week" | "month" | "lastMonth" | "all",
+  ) => {
+    const now = new Date();
+    now.setHours(23, 59, 59, 999);
+    switch (preset) {
+      case "today":
+        setDateFrom(today());
+        setDateTo(now);
+        break;
+      case "week":
+        setDateFrom(weekAgo());
+        setDateTo(now);
+        break;
+      case "month":
+        setDateFrom(monthStart());
+        setDateTo(now);
+        break;
+      case "lastMonth":
+        setDateFrom(lastMonthStart());
+        setDateTo(lastMonthEnd());
+        break;
+      case "all":
+        setDateFrom(undefined);
+        setDateTo(undefined);
+        break;
+    }
+  };
+
+  const clearAllFilters = () => {
+    setDateFrom(undefined);
+    setDateTo(undefined);
+    setPaymentStatus("all");
+    setPaymentMethodFilter("all");
+    setCourseTypeFilter("all");
+    setSearch("");
+  };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
+      {/* Header */}
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
           <h1 className="font-heading text-2xl font-bold">To'lovlar</h1>
           <p className="text-sm text-muted-foreground">
-            Barcha to'lovlarni boshqarish
+            Talabalar to'lovlarini boshqarish va hisob-kitob
           </p>
         </div>
-        <Button className="gap-2" onClick={() => setModalOpen(true)}>
-          <Plus className="h-4 w-4" /> To'lov qo'shish
-        </Button>
-      </div>
-
-      {/* Summary */}
-      <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4">
-        <SummaryCard
-          title="Jami yig'ilgan"
-          value={formatMoney(summary?.total_collected || 0)}
-          icon={<DollarSign className="h-5 w-5" />}
-        />
-        <SummaryCard
-          title="Jami qarzdorlik"
-          value={formatMoney(summary?.total_debt || 0)}
-          icon={<AlertTriangle className="h-5 w-5" />}
-        />
-        {isOwner() && (
-          <SummaryCard
-            title="Bu oylik daromad"
-            value={formatMoney(summary?.monthly_income || 0)}
-            icon={<TrendingUp className="h-5 w-5" />}
-          />
-        )}
-        <SummaryCard
-          title="To'laganlar soni"
-          value={String(paidCount)}
-          icon={<Users className="h-5 w-5" />}
-        />
-        <SummaryCard
-          title="To'lamaganlar soni"
-          value={String(unpaidCount)}
-          icon={<UserX className="h-5 w-5" />}
-        />
-      </div>
-
-      {/* Filters */}
-      <div className="flex flex-wrap items-center gap-3">
-        {isOwner() && (
-          <Select
-            value={branchId || "all"}
-            onValueChange={(v) => setBranchId(v === "all" ? undefined : v)}
-          >
-            <SelectTrigger className="w-40 bg-secondary border-border">
-              <SelectValue placeholder="Filial" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Barchasi</SelectItem>
-              {(branches || []).map((b) => (
-                <SelectItem key={b.id} value={b.id}>
-                  {b.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        )}
-
-        <Select value={paymentStatus} onValueChange={setPaymentStatus}>
-          <SelectTrigger className="w-40 bg-secondary border-border">
-            <SelectValue placeholder="Holati" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Hammasi</SelectItem>
-            <SelectItem value="paid">To'lagan</SelectItem>
-            <SelectItem value="unpaid">To'lamagan</SelectItem>
-          </SelectContent>
-        </Select>
-
-        <Select value={paymentMethodFilter} onValueChange={setPaymentMethodFilter}>
-          <SelectTrigger className="w-40 bg-secondary border-border">
-            <SelectValue placeholder="To'lov turi" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Hamma</SelectItem>
-            <SelectItem value="naqd">Naqd</SelectItem>
-            <SelectItem value="karta">Karta</SelectItem>
-          </SelectContent>
-        </Select>
-
-        <Select value={courseTypeFilter} onValueChange={setCourseTypeFilter}>
-          <SelectTrigger className="w-40 bg-secondary border-border">
-            <SelectValue placeholder="Kurs turi" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Hamma</SelectItem>
-            <SelectItem value="avto_maktab">Avto maktab</SelectItem>
-            <SelectItem value="tezkor">Tezkor</SelectItem>
-          </SelectContent>
-        </Select>
-
-        {/* Date range */}
-        <Popover>
-          <PopoverTrigger asChild>
-            <Button
-              variant="outline"
-              className={cn(
-                "w-[140px] justify-start text-left font-normal bg-secondary border-border",
-                !dateFrom && "text-muted-foreground",
-              )}
-            >
-              <CalendarIcon className="mr-2 h-4 w-4" />
-              {dateFrom ? format(dateFrom, "dd.MM.yyyy") : "Dan"}
+        <div className="flex gap-2">
+          {isOwner() && (
+            <Button variant="outline" className="gap-2" onClick={exportToExcel}>
+              <Download className="h-4 w-4" /> Excel
             </Button>
-          </PopoverTrigger>
-          <PopoverContent className="w-auto p-0" align="start">
-            <Calendar
-              mode="single"
-              selected={dateFrom}
-              onSelect={setDateFrom}
-              initialFocus
-              className={cn("p-3 pointer-events-auto")}
-            />
-          </PopoverContent>
-        </Popover>
-        <Popover>
-          <PopoverTrigger asChild>
-            <Button
-              variant="outline"
-              className={cn(
-                "w-[140px] justify-start text-left font-normal bg-secondary border-border",
-                !dateTo && "text-muted-foreground",
-              )}
-            >
-              <CalendarIcon className="mr-2 h-4 w-4" />
-              {dateTo ? format(dateTo, "dd.MM.yyyy") : "Gacha"}
-            </Button>
-          </PopoverTrigger>
-          <PopoverContent className="w-auto p-0" align="start">
-            <Calendar
-              mode="single"
-              selected={dateTo}
-              onSelect={setDateTo}
-              initialFocus
-              className={cn("p-3 pointer-events-auto")}
-            />
-          </PopoverContent>
-        </Popover>
-        {(dateFrom || dateTo) && (
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => {
-              setDateFrom(undefined);
-              setDateTo(undefined);
-            }}
-          >
-            Tozalash
+          )}
+          <Button className="gap-2" onClick={() => setModalOpen(true)}>
+            <Plus className="h-4 w-4" /> To'lov qo'shish
           </Button>
-        )}
-
-        <div className="relative flex-1 min-w-[200px]">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            placeholder="Talaba ismi..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="pl-9 bg-secondary border-border"
-          />
         </div>
       </div>
 
-      {/* Table */}
-      <div className="glass-card overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-border bg-muted/30">
-                <th className="px-4 py-3 text-center font-medium text-muted-foreground">
-                  #
-                </th>
-                <th className="px-4 py-3 text-left font-medium text-muted-foreground">
-                  Talaba
-                </th>
-                <th className="px-4 py-3 text-left font-medium text-muted-foreground">
-                  Filial
-                </th>
-                <th className="px-4 py-3 text-left font-medium text-muted-foreground">
-                  Kurs
-                </th>
-                <th className="px-4 py-3 text-right font-medium text-muted-foreground">
-                  Umumiy narx
-                </th>
-                <th className="px-4 py-3 text-right font-medium text-muted-foreground">
-                  To'langan
-                </th>
-                <th className="px-4 py-3 text-right font-medium text-muted-foreground">
-                  Qoldiq
-                </th>
-                <th className="px-4 py-3 text-center font-medium text-muted-foreground">
-                  Turi
-                </th>
-                <th className="px-4 py-3 text-left font-medium text-muted-foreground">
-                  Sana
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {isLoading
-                ? [...Array(4)].map((_, i) => (
+      {/* SECTION 1: Joriy holat (Always visible snapshot) */}
+      <section>
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+            Joriy holat
+          </h2>
+          <span className="text-xs text-muted-foreground">
+            Filterga bog'liq emas
+          </span>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <SummaryCard
+            title="Bugungi daromad"
+            value={formatMoney(snapshot?.today_income || 0)}
+            icon={<Sun className="h-5 w-5" />}
+          />
+          <SummaryCard
+            title="Bu oygi daromad"
+            value={formatMoney(snapshot?.this_month_income || 0)}
+            icon={<TrendingUp className="h-5 w-5" />}
+          />
+          <SummaryCard
+            title="Joriy qarzdorlik"
+            value={formatMoney(snapshot?.current_total_debt || 0)}
+            icon={<AlertTriangle className="h-5 w-5" />}
+          />
+          <SummaryCard
+            title="Qarzdor talabalar"
+            value={`${snapshot?.students_with_debt || 0} ta`}
+            icon={<Users className="h-5 w-5" />}
+          />
+        </div>
+      </section>
+
+      {/* SECTION 2: Filterlar */}
+      <section>
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+            Filterlash
+          </h2>
+          {hasAnyFilter && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={clearAllFilters}
+              className="h-7 gap-1 text-xs"
+            >
+              <X className="h-3 w-3" /> Hammasini tozalash
+            </Button>
+          )}
+        </div>
+
+        {/* Quick date presets */}
+        <div className="flex flex-wrap gap-2 mb-3">
+          <Button variant="outline" size="sm" onClick={() => setPreset("today")}>
+            Bugun
+          </Button>
+          <Button variant="outline" size="sm" onClick={() => setPreset("week")}>
+            So'nggi 7 kun
+          </Button>
+          <Button variant="outline" size="sm" onClick={() => setPreset("month")}>
+            Bu oy
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setPreset("lastMonth")}
+          >
+            O'tgan oy
+          </Button>
+          <Button variant="outline" size="sm" onClick={() => setPreset("all")}>
+            Barcha vaqt
+          </Button>
+        </div>
+
+        {/* Filter row */}
+        <div className="flex flex-wrap items-center gap-3">
+          {isOwner() && (
+            <Select
+              value={branchId || "all"}
+              onValueChange={(v) => setBranchId(v === "all" ? undefined : v)}
+            >
+              <SelectTrigger className="w-40 bg-secondary border-border">
+                <SelectValue placeholder="Filial" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Barcha filiallar</SelectItem>
+                {(branches || []).map((b) => (
+                  <SelectItem key={b.id} value={b.id}>
+                    {b.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
+
+          <Select value={paymentStatus} onValueChange={setPaymentStatus}>
+            <SelectTrigger className="w-44 bg-secondary border-border">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Barcha holatlar</SelectItem>
+              <SelectItem value="paid">To'liq to'lagan</SelectItem>
+              <SelectItem value="unpaid">Qarzi bor</SelectItem>
+            </SelectContent>
+          </Select>
+
+          <Select
+            value={paymentMethodFilter}
+            onValueChange={setPaymentMethodFilter}
+          >
+            <SelectTrigger className="w-40 bg-secondary border-border">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Barcha turi</SelectItem>
+              <SelectItem value="naqd">Naqd</SelectItem>
+              <SelectItem value="karta">Karta</SelectItem>
+              <SelectItem value="perechisleniya">Perechisleniya</SelectItem>
+            </SelectContent>
+          </Select>
+
+          <Select value={courseTypeFilter} onValueChange={setCourseTypeFilter}>
+            <SelectTrigger className="w-40 bg-secondary border-border">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Barcha kurslar</SelectItem>
+              <SelectItem value="avto_maktab">Avto maktab</SelectItem>
+              <SelectItem value="tezkor">Tezkor</SelectItem>
+            </SelectContent>
+          </Select>
+
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button
+                variant="outline"
+                className={cn(
+                  "min-w-[200px] justify-start text-left font-normal bg-secondary border-border",
+                  !dateFrom && "text-muted-foreground",
+                )}
+              >
+                <CalendarIcon className="mr-2 h-4 w-4" />
+                {!dateFrom
+                  ? "Sana tanlang"
+                  : dateTo && dateTo.getTime() !== dateFrom.getTime()
+                    ? `${format(dateFrom, "dd.MM.yyyy")} → ${format(dateTo, "dd.MM.yyyy")}`
+                    : format(dateFrom, "dd.MM.yyyy")}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0" align="start">
+              <Calendar
+                mode="range"
+                selected={{ from: dateFrom, to: dateTo }}
+                onSelect={(range) => {
+                  if (!range) {
+                    setDateFrom(undefined);
+                    setDateTo(undefined);
+                  } else {
+                    setDateFrom(range.from);
+                    setDateTo(range.to ?? range.from);
+                  }
+                }}
+                numberOfMonths={2}
+                initialFocus
+                className={cn("p-3 pointer-events-auto")}
+              />
+            </PopoverContent>
+          </Popover>
+
+          <div className="relative flex-1 min-w-[220px]">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              placeholder="Talaba ismi bo'yicha qidirish..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="pl-9 bg-secondary border-border"
+            />
+          </div>
+        </div>
+      </section>
+
+      {/* SECTION 3: Tanlangan davr natijasi (only when date filter active) */}
+      {hasDateFilter && (
+        <section>
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-xs font-semibold uppercase tracking-wider text-primary">
+              Tanlangan davr natijasi
+            </h2>
+            <span className="text-xs text-muted-foreground">
+              {dateFrom ? format(dateFrom, "dd.MM.yyyy") : "boshidan"} →{" "}
+              {dateTo ? format(dateTo, "dd.MM.yyyy") : "bugungacha"}
+            </span>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <SummaryCard
+              title="Yig'ilgan summa"
+              value={formatMoney(displayedSummary.period_collected)}
+              icon={<Wallet className="h-5 w-5" />}
+            />
+            <SummaryCard
+              title="To'lovlar soni"
+              value={`${displayedSummary.period_payments_count} ta`}
+              icon={<Receipt className="h-5 w-5" />}
+            />
+            <SummaryCard
+              title="Qarzdorlik"
+              value={formatMoney(displayedSummary.period_debt)}
+              icon={<AlertTriangle className="h-5 w-5" />}
+            />
+          </div>
+        </section>
+      )}
+
+      {/* SECTION 4: Table */}
+      <section>
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+            To'lovlar ro'yxati
+          </h2>
+          <span className="text-xs text-muted-foreground">
+            {filtered.length} ta natija
+          </span>
+        </div>
+        <div className="relative">
+          {isFetching && !isLoading && (
+            <div className="absolute inset-0 z-10 flex items-center justify-center rounded-xl bg-background/60 backdrop-blur-[2px]">
+              <Loader2 className="h-6 w-6 animate-spin text-primary" />
+            </div>
+          )}
+        <div className={cn("glass-card overflow-hidden transition-opacity duration-200", isFetching && !isLoading && "opacity-50")}>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-border bg-muted/30">
+                  <th className="px-4 py-3 text-center font-medium text-muted-foreground">
+                    #
+                  </th>
+                  <th className="px-4 py-3 text-left font-medium text-muted-foreground">
+                    <button onClick={() => toggleSort("student_name")} className="flex items-center gap-1 hover:text-foreground transition-colors">
+                      Talaba
+                      {sortField === "student_name" ? (sortDir === "asc" ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />) : <ChevronsUpDown className="h-3 w-3 text-muted-foreground/50" />}
+                    </button>
+                  </th>
+                  <th className="px-4 py-3 text-left font-medium text-muted-foreground">
+                    Filial
+                  </th>
+                  <th className="px-4 py-3 text-left font-medium text-muted-foreground">
+                    Kurs
+                  </th>
+                  <th className="px-4 py-3 text-right font-medium text-muted-foreground">
+                    Umumiy narx
+                  </th>
+                  <th className="px-4 py-3 text-right font-medium text-muted-foreground">
+                    <button onClick={() => toggleSort("amount_paid")} className="flex items-center gap-1 hover:text-foreground transition-colors ml-auto">
+                      Bu to'lov
+                      {sortField === "amount_paid" ? (sortDir === "asc" ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />) : <ChevronsUpDown className="h-3 w-3 text-muted-foreground/50" />}
+                    </button>
+                  </th>
+                  <th className="px-4 py-3 text-right font-medium text-muted-foreground">
+                    <button onClick={() => toggleSort("remaining_debt")} className="flex items-center gap-1 hover:text-foreground transition-colors ml-auto">
+                      Joriy qoldiq
+                      {sortField === "remaining_debt" ? (sortDir === "asc" ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />) : <ChevronsUpDown className="h-3 w-3 text-muted-foreground/50" />}
+                    </button>
+                  </th>
+                  <th className="px-4 py-3 text-center font-medium text-muted-foreground">
+                    Turi
+                  </th>
+                  <th className="px-4 py-3 text-left font-medium text-muted-foreground">
+                    Operator
+                  </th>
+                  <th className="px-4 py-3 text-left font-medium text-muted-foreground">
+                    <button onClick={() => toggleSort("date")} className="flex items-center gap-1 hover:text-foreground transition-colors">
+                      Sana
+                      {sortField === "date" ? (sortDir === "asc" ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />) : <ChevronsUpDown className="h-3 w-3 text-muted-foreground/50" />}
+                    </button>
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {isLoading ? (
+                  [...Array(4)].map((_, i) => (
                     <tr key={i} className="border-b border-border/50">
-                      <td colSpan={9} className="p-4">
+                      <td colSpan={10} className="p-4">
                         <Skeleton className="h-5" />
                       </td>
                     </tr>
                   ))
-                : paginatedItems?.map((p, idx) => (
+                ) : paginatedItems?.length === 0 ? (
+                  <tr>
+                    <td
+                      colSpan={10}
+                      className="py-12 text-center text-muted-foreground"
+                    >
+                      To'lovlar topilmadi
+                    </td>
+                  </tr>
+                ) : (
+                  paginatedItems?.map((p, idx) => (
                     <tr
                       key={p.id}
                       className="table-row-striped border-b border-border/50"
@@ -375,13 +585,15 @@ const PaymentsPage = () => {
                         {p.branch_name}
                       </td>
                       <td className="px-4 py-3 text-xs">
-                        {p.course_type === "tezkor" ? "Tezkor" : "Avto maktab"}
+                        {p.course_type === "tezkor"
+                          ? "Tezkor"
+                          : "Avto maktab"}
                       </td>
                       <td className="px-4 py-3 text-right">
                         {new Intl.NumberFormat("uz-UZ").format(p.total_price)}
                       </td>
-                      <td className="px-4 py-3 text-right text-success">
-                        {new Intl.NumberFormat("uz-UZ").format(p.amount_paid)}
+                      <td className="px-4 py-3 text-right text-success font-medium">
+                        +{new Intl.NumberFormat("uz-UZ").format(p.amount_paid)}
                       </td>
                       <td className="px-4 py-3 text-right">
                         <span
@@ -395,32 +607,39 @@ const PaymentsPage = () => {
                             ? new Intl.NumberFormat("uz-UZ").format(
                                 p.remaining_debt,
                               )
-                            : "—"}
+                            : "To'liq"}
                         </span>
                       </td>
                       <td className="px-4 py-3 text-center text-xs">
-                        {p.payment_method === "naqd" ? "Naqd" : "Karta"}
+                        {p.payment_method === "naqd"
+                          ? "Naqd"
+                          : p.payment_method === "karta"
+                            ? "Karta"
+                            : "Perechisleniya"}
+                      </td>
+                      <td className="px-4 py-3 text-muted-foreground text-xs">
+                        {p.recorded_by || "—"}
                       </td>
                       <td className="px-4 py-3 text-muted-foreground">
                         {formatDate(p.date)}
                       </td>
                     </tr>
-                  ))}
-            </tbody>
-          </table>
-          {filtered?.length === 0 && !isLoading && (
-            <div className="py-12 text-center text-muted-foreground">
-              To'lovlar topilmadi
-            </div>
-          )}
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
         </div>
-      </div>
+        </div>
 
-      <PaginationControls
-        currentPage={currentPage}
-        totalPages={totalPages}
-        onPageChange={setCurrentPage}
-      />
+        <div className="mt-4">
+          <PaginationControls
+            currentPage={currentPage}
+            totalPages={totalPages}
+            onPageChange={setCurrentPage}
+          />
+        </div>
+      </section>
 
       <PaymentModal
         open={modalOpen}

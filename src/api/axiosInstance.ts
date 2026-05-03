@@ -6,6 +6,7 @@ const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'https://auto-drive-ba
 const axiosInstance = axios.create({
   baseURL: API_BASE_URL,
   headers: { 'Content-Type': 'application/json' },
+  withCredentials: true,  // send httpOnly cookie on every request
 });
 
 axiosInstance.interceptors.request.use((config) => {

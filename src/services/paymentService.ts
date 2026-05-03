@@ -1,14 +1,22 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import axiosInstance from "@/api/axiosInstance";
-import { Payment, PaymentSummary } from "@/types/payment";
+import { Payment, PaymentSnapshot, PaymentSummary } from "@/types/payment";
 
-export const usePayments = (branchId?: string, courseType?: string) =>
+const toLocalDateStr = (d: Date): string =>
+  `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+
+export const usePayments = (branchId?: string, courseType?: string, startDate?: Date, endDate?: Date) =>
   useQuery<Payment[]>({
-    queryKey: ["payments", branchId, courseType],
+    queryKey: ["payments", branchId, courseType, startDate, endDate],
     queryFn: async () => {
       try {
         const { data: res } = await axiosInstance.get("/payments", {
-          params: { branch_id: branchId, course_type: courseType },
+          params: {
+            branch_id: branchId,
+            course_type: courseType,
+            startDate: startDate ? toLocalDateStr(startDate) : undefined,
+            endDate: endDate ? toLocalDateStr(endDate) : undefined,
+          },
         });
         const arr = res?.data;
         if (Array.isArray(arr)) return arr;
@@ -20,6 +28,26 @@ export const usePayments = (branchId?: string, courseType?: string) =>
     },
   });
 
+export const usePaymentSnapshot = (branchId?: string) =>
+  useQuery<PaymentSnapshot>({
+    queryKey: ["payment-snapshot", branchId],
+    queryFn: async () => {
+      try {
+        const { data: res } = await axiosInstance.get("/payments/snapshot", {
+          params: { branch_id: branchId },
+        });
+        return res?.data || res;
+      } catch {
+        return {
+          today_income: 0,
+          this_month_income: 0,
+          current_total_debt: 0,
+          students_with_debt: 0,
+        };
+      }
+    },
+  });
+
 export const usePaymentSummary = (
   branchId?: string,
   startDate?: Date,
@@ -27,6 +55,7 @@ export const usePaymentSummary = (
   payment_status?: boolean | undefined,
   payment_type?: string,
   course_type?: string,
+  enabled = true,
 ) =>
   useQuery<PaymentSummary>({
     queryKey: [
@@ -38,21 +67,26 @@ export const usePaymentSummary = (
       payment_type,
       course_type,
     ],
+    enabled,
     queryFn: async () => {
       try {
         const { data: res } = await axiosInstance.get("/payments/summary", {
           params: {
-            branchId: branchId,
-            startDate: startDate,
-            endDate: endDate,
-            paymentStatus : payment_status,
+            branchId,
+            startDate: startDate ? toLocalDateStr(startDate) : undefined,
+            endDate: endDate ? toLocalDateStr(endDate) : undefined,
+            paymentStatus: payment_status,
             payment_type,
             course_type,
           },
         });
         return res?.data || res;
       } catch {
-        return [];
+        return {
+          period_collected: 0,
+          period_payments_count: 0,
+          period_debt: 0,
+        };
       }
     },
   });

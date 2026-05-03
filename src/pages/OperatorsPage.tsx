@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Plus, Search, Pencil, Trash2 } from "lucide-react";
+import { Plus, Search, Pencil, Trash2, ChevronUp, ChevronDown, ChevronsUpDown } from "lucide-react";
 import { usePagination } from "@/hooks/usePagination";
 import PaginationControls from "@/components/ui/PaginationControls";
 import {
@@ -33,6 +33,8 @@ import { formatPhone } from "@/lib/phoneFormater";
 
 const OperatorsPage = () => {
   const [search, setSearch] = useState("");
+  const [sortField, setSortField] = useState("name");
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
   const [modalOpen, setModalOpen] = useState(false);
   const [editItem, setEditItem] = useState<User | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
@@ -48,8 +50,26 @@ const OperatorsPage = () => {
       o.name?.toLowerCase().includes(search.toLowerCase()) ||
       o.phone?.includes(search),
   );
+
+  const toggleSort = (field: string) => {
+    if (sortField === field) setSortDir((d) => (d === "asc" ? "desc" : "asc"));
+    else { setSortField(field); setSortDir("asc"); }
+  };
+
+  const sorted = [...filtered].sort((a, b) => {
+    const va = a[sortField as keyof typeof a];
+    const vb = b[sortField as keyof typeof b];
+    if (va == null && vb == null) return 0;
+    if (va == null) return 1;
+    if (vb == null) return -1;
+    if (typeof va === "string" && typeof vb === "string") {
+      return sortDir === "asc" ? va.localeCompare(vb) : vb.localeCompare(va);
+    }
+    return sortDir === "asc" ? (va < vb ? -1 : va > vb ? 1 : 0) : (va > vb ? -1 : va < vb ? 1 : 0);
+  });
+
   const { currentPage, totalPages, paginatedItems, setCurrentPage } =
-    usePagination(filtered);
+    usePagination(sorted);
 
   const openCreate = () => {
     setEditItem(null);
@@ -138,13 +158,22 @@ const OperatorsPage = () => {
                 #
               </th>
               <th className="px-4 py-3 text-left font-medium text-muted-foreground">
-                Ism
+                <button onClick={() => toggleSort("name")} className="flex items-center gap-1 hover:text-foreground transition-colors">
+                  Ism
+                  {sortField === "name" ? (sortDir === "asc" ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />) : <ChevronsUpDown className="h-3 w-3 text-muted-foreground/50" />}
+                </button>
               </th>
               <th className="px-4 py-3 text-left font-medium text-muted-foreground">
-                Telefon
+                <button onClick={() => toggleSort("phone")} className="flex items-center gap-1 hover:text-foreground transition-colors">
+                  Telefon
+                  {sortField === "phone" ? (sortDir === "asc" ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />) : <ChevronsUpDown className="h-3 w-3 text-muted-foreground/50" />}
+                </button>
               </th>
               <th className="px-4 py-3 text-left font-medium text-muted-foreground">
-                Filial
+                <button onClick={() => toggleSort("branch_name")} className="flex items-center gap-1 hover:text-foreground transition-colors">
+                  Filial
+                  {sortField === "branch_name" ? (sortDir === "asc" ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />) : <ChevronsUpDown className="h-3 w-3 text-muted-foreground/50" />}
+                </button>
               </th>
               <th className="px-4 py-3 text-center font-medium text-muted-foreground">
                 Holati

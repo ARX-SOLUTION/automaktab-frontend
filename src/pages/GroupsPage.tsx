@@ -18,7 +18,7 @@ import {
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
-import { Plus, Search, Pencil, Trash2, ChevronDown, ChevronRight, Eye } from "lucide-react";
+import { Plus, Search, Pencil, Trash2, ChevronDown, ChevronRight, Eye, ChevronUp, ChevronsUpDown } from "lucide-react";
 import { toast } from "sonner";
 import { usePagination } from "@/hooks/usePagination";
 import PaginationControls from "@/components/ui/PaginationControls";
@@ -43,6 +43,8 @@ const GroupsPage = () => {
 
   const [search, setSearch] = useState("");
   const [courseTypeFilter, setCourseTypeFilter] = useState("all");
+  const [sortField, setSortField] = useState("name");
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
   const [modalOpen, setModalOpen] = useState(false);
   const [editGroup, setEditGroup] = useState<Group | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
@@ -64,7 +66,24 @@ const GroupsPage = () => {
     return matchesSearch && matchesCourseType;
   });
 
-  const { currentPage, totalPages, paginatedItems: filtered, setCurrentPage } = usePagination(filteredGroups);
+  const toggleSort = (field: string) => {
+    if (sortField === field) setSortDir((d) => (d === "asc" ? "desc" : "asc"));
+    else { setSortField(field); setSortDir("asc"); }
+  };
+
+  const sortedGroups = [...filteredGroups].sort((a, b) => {
+    const va = a[sortField as keyof typeof a];
+    const vb = b[sortField as keyof typeof b];
+    if (va == null && vb == null) return 0;
+    if (va == null) return 1;
+    if (vb == null) return -1;
+    if (typeof va === "string" && typeof vb === "string") {
+      return sortDir === "asc" ? va.localeCompare(vb) : vb.localeCompare(va);
+    }
+    return sortDir === "asc" ? (va < vb ? -1 : va > vb ? 1 : 0) : (va > vb ? -1 : va < vb ? 1 : 0);
+  });
+
+  const { currentPage, totalPages, paginatedItems: filtered, setCurrentPage } = usePagination(sortedGroups);
 
   const openCreate = () => {
     setEditGroup(null);
@@ -201,9 +220,19 @@ const GroupsPage = () => {
             <thead>
               <tr className="border-b border-border bg-muted/30">
                 <th className="px-4 py-3 text-center font-medium text-muted-foreground">#</th>
-                <th className="px-4 py-3 text-left font-medium text-muted-foreground">Nomi</th>
+                <th className="px-4 py-3 text-left font-medium text-muted-foreground">
+                  <button onClick={() => toggleSort("name")} className="flex items-center gap-1 hover:text-foreground transition-colors">
+                    Nomi
+                    {sortField === "name" ? (sortDir === "asc" ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />) : <ChevronsUpDown className="h-3 w-3 text-muted-foreground/50" />}
+                  </button>
+                </th>
                 <th className="px-4 py-3 text-left font-medium text-muted-foreground">Filial</th>
-                <th className="px-4 py-3 text-center font-medium text-muted-foreground">Kurs turi</th>
+                <th className="px-4 py-3 text-center font-medium text-muted-foreground">
+                  <button onClick={() => toggleSort("course_type")} className="flex items-center gap-1 hover:text-foreground transition-colors mx-auto">
+                    Kurs turi
+                    {sortField === "course_type" ? (sortDir === "asc" ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />) : <ChevronsUpDown className="h-3 w-3 text-muted-foreground/50" />}
+                  </button>
+                </th>
                 <th className="px-4 py-3 text-center font-medium text-muted-foreground">Talabalar</th>
                 <th className="px-4 py-3 text-center font-medium text-muted-foreground">Holati</th>
                 <th className="px-4 py-3 text-left font-medium text-muted-foreground">Yaratilgan</th>

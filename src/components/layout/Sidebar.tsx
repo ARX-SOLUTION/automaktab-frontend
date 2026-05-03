@@ -14,6 +14,7 @@ import {
   Car,
   Layers,
   UserCog,
+  ShieldCheck,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useState } from "react";
@@ -53,6 +54,7 @@ const navItems = [
     icon: UserCog,
     ownerOnly: true,
   },
+  { path: "/audit", label: "Audit log", icon: ShieldCheck, ownerOnly: true },
   { path: "/profile", label: "Profil", icon: User, ownerOnly: false },
 ];
 

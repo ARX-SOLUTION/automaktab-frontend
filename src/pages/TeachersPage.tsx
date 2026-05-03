@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Plus, Search, Pencil, Trash2 } from 'lucide-react';
+import { Plus, Search, Pencil, Trash2, ChevronUp, ChevronDown, ChevronsUpDown } from 'lucide-react';
 import { usePagination } from '@/hooks/usePagination';
 import PaginationControls from '@/components/ui/PaginationControls';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -21,6 +21,8 @@ const specLabels: Record<Specialization, string> = {
 
 const TeachersPage = () => {
   const [search, setSearch] = useState('');
+  const [sortField, setSortField] = useState('name');
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
   const [modalOpen, setModalOpen] = useState(false);
   const [editItem, setEditItem] = useState<User | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
@@ -36,7 +38,25 @@ const TeachersPage = () => {
     t.name?.toLowerCase().includes(search.toLowerCase()) ||
     t.phone?.includes(search)
   );
-  const { currentPage, totalPages, paginatedItems, setCurrentPage } = usePagination(filtered);
+
+  const toggleSort = (field: string) => {
+    if (sortField === field) setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'));
+    else { setSortField(field); setSortDir('asc'); }
+  };
+
+  const sorted = [...filtered].sort((a, b) => {
+    const va = a[sortField as keyof typeof a];
+    const vb = b[sortField as keyof typeof b];
+    if (va == null && vb == null) return 0;
+    if (va == null) return 1;
+    if (vb == null) return -1;
+    if (typeof va === 'string' && typeof vb === 'string') {
+      return sortDir === 'asc' ? va.localeCompare(vb) : vb.localeCompare(va);
+    }
+    return sortDir === 'asc' ? (va < vb ? -1 : va > vb ? 1 : 0) : (va > vb ? -1 : va < vb ? 1 : 0);
+  });
+
+  const { currentPage, totalPages, paginatedItems, setCurrentPage } = usePagination(sorted);
 
   const openCreate = () => {
     setEditItem(null);
@@ -97,8 +117,18 @@ const TeachersPage = () => {
           <thead>
             <tr className="border-b border-border bg-muted/30">
               <th className="px-4 py-3 text-center font-medium text-muted-foreground">#</th>
-              <th className="px-4 py-3 text-left font-medium text-muted-foreground">Ism</th>
-              <th className="px-4 py-3 text-left font-medium text-muted-foreground">Telefon</th>
+              <th className="px-4 py-3 text-left font-medium text-muted-foreground">
+                <button onClick={() => toggleSort('name')} className="flex items-center gap-1 hover:text-foreground transition-colors">
+                  Ism
+                  {sortField === 'name' ? (sortDir === 'asc' ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />) : <ChevronsUpDown className="h-3 w-3 text-muted-foreground/50" />}
+                </button>
+              </th>
+              <th className="px-4 py-3 text-left font-medium text-muted-foreground">
+                <button onClick={() => toggleSort('phone')} className="flex items-center gap-1 hover:text-foreground transition-colors">
+                  Telefon
+                  {sortField === 'phone' ? (sortDir === 'asc' ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />) : <ChevronsUpDown className="h-3 w-3 text-muted-foreground/50" />}
+                </button>
+              </th>
               <th className="px-4 py-3 text-left font-medium text-muted-foreground">Mutaxassisligi</th>
               <th className="px-4 py-3 text-left font-medium text-muted-foreground">Filial</th>
               <th className="px-4 py-3 text-center font-medium text-muted-foreground">Holati</th>

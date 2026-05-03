@@ -21,6 +21,12 @@ export const useAuthStore = create<AuthState>()(
       logout: () => set({ token: null, user: null, isAuthenticated: false }),
       isOwner: () => get().user?.role === 'owner',
     }),
-    { name: 'autodrive-auth' }
+    {
+      name: 'autodrive-auth',
+      // token is NOT persisted — it lives in memory only.
+      // Session is maintained via httpOnly cookie; Bearer is kept for
+      // in-session requests where the in-memory token is still available.
+      partialize: (state) => ({ user: state.user, isAuthenticated: state.isAuthenticated }),
+    }
   )
 );

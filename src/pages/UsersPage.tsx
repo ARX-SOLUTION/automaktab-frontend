@@ -1,8 +1,10 @@
+import { useState } from "react";
 import { useUsers } from "@/services/userService";
 import { Skeleton } from "@/components/ui/skeleton";
 import { format } from "date-fns";
 import { usePagination } from "@/hooks/usePagination";
 import PaginationControls from "@/components/ui/PaginationControls";
+import { ChevronUp, ChevronDown, ChevronsUpDown } from "lucide-react";
 
 const formatDate = (d?: string) => {
   if (!d) return "—";
@@ -11,7 +13,27 @@ const formatDate = (d?: string) => {
 
 const UsersPage = () => {
   const { data: users, isLoading } = useUsers();
-  const { currentPage, totalPages, paginatedItems, setCurrentPage } = usePagination(users || []);
+  const [sortField, setSortField] = useState("name");
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
+
+  const toggleSort = (field: string) => {
+    if (sortField === field) setSortDir((d) => (d === "asc" ? "desc" : "asc"));
+    else { setSortField(field); setSortDir("asc"); }
+  };
+
+  const sorted = [...(users || [])].sort((a, b) => {
+    const va = a[sortField as keyof typeof a];
+    const vb = b[sortField as keyof typeof b];
+    if (va == null && vb == null) return 0;
+    if (va == null) return 1;
+    if (vb == null) return -1;
+    if (typeof va === "string" && typeof vb === "string") {
+      return sortDir === "asc" ? va.localeCompare(vb) : vb.localeCompare(va);
+    }
+    return sortDir === "asc" ? (va < vb ? -1 : va > vb ? 1 : 0) : (va > vb ? -1 : va < vb ? 1 : 0);
+  });
+
+  const { currentPage, totalPages, paginatedItems, setCurrentPage } = usePagination(sorted);
 
   const startIndex = (currentPage - 1) * 10;
 
@@ -28,12 +50,37 @@ const UsersPage = () => {
             <thead>
               <tr className="border-b border-border bg-muted/30">
                 <th className="px-4 py-3 text-center font-medium text-muted-foreground">#</th>
-                <th className="px-4 py-3 text-left font-medium text-muted-foreground">Email</th>
-                <th className="px-4 py-3 text-left font-medium text-muted-foreground">Telefon</th>
-                <th className="px-4 py-3 text-center font-medium text-muted-foreground">Rol</th>
-                <th className="px-4 py-3 text-left font-medium text-muted-foreground">Filial</th>
+                <th className="px-4 py-3 text-left font-medium text-muted-foreground">
+                  <button onClick={() => toggleSort("email")} className="flex items-center gap-1 hover:text-foreground transition-colors">
+                    Email
+                    {sortField === "email" ? (sortDir === "asc" ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />) : <ChevronsUpDown className="h-3 w-3 text-muted-foreground/50" />}
+                  </button>
+                </th>
+                <th className="px-4 py-3 text-left font-medium text-muted-foreground">
+                  <button onClick={() => toggleSort("phone")} className="flex items-center gap-1 hover:text-foreground transition-colors">
+                    Telefon
+                    {sortField === "phone" ? (sortDir === "asc" ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />) : <ChevronsUpDown className="h-3 w-3 text-muted-foreground/50" />}
+                  </button>
+                </th>
+                <th className="px-4 py-3 text-center font-medium text-muted-foreground">
+                  <button onClick={() => toggleSort("role")} className="flex items-center gap-1 hover:text-foreground transition-colors mx-auto">
+                    Rol
+                    {sortField === "role" ? (sortDir === "asc" ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />) : <ChevronsUpDown className="h-3 w-3 text-muted-foreground/50" />}
+                  </button>
+                </th>
+                <th className="px-4 py-3 text-left font-medium text-muted-foreground">
+                  <button onClick={() => toggleSort("branch_name")} className="flex items-center gap-1 hover:text-foreground transition-colors">
+                    Filial
+                    {sortField === "branch_name" ? (sortDir === "asc" ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />) : <ChevronsUpDown className="h-3 w-3 text-muted-foreground/50" />}
+                  </button>
+                </th>
                 <th className="px-4 py-3 text-center font-medium text-muted-foreground">Holati</th>
-                <th className="px-4 py-3 text-left font-medium text-muted-foreground">Yaratilgan</th>
+                <th className="px-4 py-3 text-left font-medium text-muted-foreground">
+                  <button onClick={() => toggleSort("created_at")} className="flex items-center gap-1 hover:text-foreground transition-colors">
+                    Yaratilgan
+                    {sortField === "created_at" ? (sortDir === "asc" ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />) : <ChevronsUpDown className="h-3 w-3 text-muted-foreground/50" />}
+                  </button>
+                </th>
               </tr>
             </thead>
             <tbody>
