@@ -575,6 +575,7 @@ const StudentsPage = () => {
         student={editStudent}
         courseType={courseType}
         operators={operators || []}
+        defaultBranchId={branchId}
       />
 
       <ConfirmDialog
