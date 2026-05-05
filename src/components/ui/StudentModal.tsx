@@ -69,6 +69,7 @@ interface StudentModalProps {
   courseType: CourseType;
   operators?: User[];
   disabledFields?: string[];
+  defaultBranchId?: string;
 }
 
 const StudentModal = ({
@@ -80,6 +81,7 @@ const StudentModal = ({
   courseType,
   operators = [],
   disabledFields = [],
+  defaultBranchId,
 }: StudentModalProps) => {
   const { isOwner, user } = useAuthStore();
   const { data: branches } = useBranches();
@@ -96,7 +98,7 @@ const StudentModal = ({
     last_name: "",
     phone: "",
     course_type: courseType,
-    branch_id: isOwner() ? "" : user?.branch_id || "",
+    branch_id: isOwner() ? (defaultBranchId || "") : user?.branch_id || "",
     payment_method: "naqd",
     result: "oqimoqda",
     has_document: false,
@@ -167,6 +169,10 @@ const StudentModal = ({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (!form.branch_id) {
+      alert("Filial tanlanmagan! Iltimos filial tanlang.");
+      return;
+    }
     if (courseType === "avto_maktab" && !form.group_id?.trim()) {
       alert("Avto maktab kursi uchun Guruh tanlash shart!");
       return;
